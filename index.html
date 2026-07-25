@@ -18,7 +18,7 @@
   .lbl{font-size:11px;color:#888;margin:6px 0 3px}
   #legend{font-size:12px;line-height:1.7;margin-top:6px}
   #legend span.sw,.leaflet-tooltip .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:6px;vertical-align:-1px}
-  .leaflet-tooltip.dt{direction:rtl;text-align:right;font-size:12px;line-height:1.6;padding:8px 10px;max-width:220px}
+  .leaflet-tooltip.dt{direction:rtl;text-align:right;font-size:12px;line-height:1.6;padding:8px 10px;max-width:250px;white-space:normal}
   .foot{font-size:10px;color:#999;margin-top:8px}
 </style>
 </head>
@@ -48,7 +48,9 @@ function colorOf(p){return curC==='bloc'?BLOCCOL[p.wb]:(PCOL[p.wp]||'#999');}
 function tip(p){
   const rows=BLOCS.map((k,i)=>[k,p.b[i]]).sort((a,b)=>b[1]-a[1])
     .map(([k,v])=>`<div><span class="sw" style="background:${BLOCCOL[k]}"></span>${k}: ${v}%</div>`).join('');
-  return `<b>מחוז ${p.d}</b> · ${p.v.toLocaleString()} מצביעים<br>זוכה: <b>${PARTYNAMES[p.wp]||p.wp}</b> (גוש ${p.wb}) · מרווח ${p.m}%<hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}`;
+  const more=p.sn>p.s.length?` ועוד ${p.sn-p.s.length}`:'';
+  const setl=`<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px;color:#444"><b>יישובים (${p.sn}):</b> ${p.s.join(', ')}${more}</div>`;
+  return `<b>מחוז ${p.d}</b> · ${p.v.toLocaleString()} מצביעים<br>זוכה: <b>${PARTYNAMES[p.wp]||p.wp}</b> (גוש ${p.wb}) · מרווח ${p.m}%<hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
 }
 function legend(){
   const f=DATA[curN].features,cnt={},colf={};
@@ -59,9 +61,9 @@ function legend(){
 }
 function draw(){
   if(layer)map.removeLayer(layer);
-  layer=L.geoJSON(DATA[curN],{style:f=>({color:'#fff',weight:0.7,fillColor:colorOf(f.properties),fillOpacity:0.82}),
+  layer=L.geoJSON(DATA[curN],{style:f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}),
     onEachFeature:(f,l)=>{l.bindTooltip(tip(f.properties),{className:'dt',sticky:true});
-      l.on('mouseover',()=>l.setStyle({weight:2,color:'#000'}));l.on('mouseout',()=>l.setStyle({weight:0.7,color:'#fff'}));}}).addTo(map);
+      l.on('mouseover',()=>l.setStyle({weight:2,color:'#000'}));l.on('mouseout',()=>l.setStyle({weight:0.6,color:'#fff'}));}}).addTo(map);
   legend();
 }
 document.getElementById('nseg').onclick=e=>{if(!e.target.dataset.n)return;document.querySelectorAll('#nseg button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');curN=e.target.dataset.n;draw();};
