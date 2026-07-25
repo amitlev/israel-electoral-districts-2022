@@ -46,11 +46,12 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   {attribution:'&copy; OpenStreetMap, &copy; CARTO',subdomains:'abcd',maxZoom:16}).addTo(map);
 function colorOf(p){return curC==='bloc'?BLOCCOL[p.wb]:(PCOL[p.wp]||'#999');}
 function tip(p){
-  const rows=BLOCS.map((k,i)=>[k,p.b[i]]).sort((a,b)=>b[1]-a[1])
+  const b=p.b||[0,0,0,0];
+  const rows=BLOCS.map((k,i)=>[k,b[i]||0]).sort((x,y)=>y[1]-x[1])
     .map(([k,v])=>`<div><span class="sw" style="background:${BLOCCOL[k]}"></span>${k}: ${v}%</div>`).join('');
-  const more=p.sn>p.s.length?` ועוד ${p.sn-p.s.length}`:'';
-  const setl=`<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px;color:#444"><b>יישובים (${p.sn}):</b> ${p.s.join(', ')}${more}</div>`;
-  return `<b>מחוז ${p.d}</b> · ${p.v.toLocaleString()} מצביעים<br>זוכה: <b>${PARTYNAMES[p.wp]||p.wp}</b> (גוש ${p.wb}) · מרווח ${p.m}%<hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
+  const s=p.s||[],sn=p.sn||s.length,more=sn>s.length?` ועוד ${sn-s.length}`:'';
+  const setl=s.length?`<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px;color:#444"><b>יישובים (${sn}):</b> ${s.join(', ')}${more}</div>`:'';
+  return `<b>מחוז ${p.d}</b> · ${(p.v||0).toLocaleString()} מצביעים<br>זוכה: <b>${PARTYNAMES[p.wp]||p.wp}</b> (גוש ${p.wb}) · מרווח ${p.m}%<hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
 }
 function legend(){
   const f=DATA[curN].features,cnt={},colf={};
@@ -62,7 +63,7 @@ function legend(){
 function draw(){
   if(layer)map.removeLayer(layer);
   layer=L.geoJSON(DATA[curN],{style:f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}),
-    onEachFeature:(f,l)=>{l.bindTooltip(tip(f.properties),{className:'dt',sticky:true});
+    onEachFeature:(f,l)=>{try{l.bindTooltip(tip(f.properties),{className:'dt',sticky:true});}catch(e){}
       l.on('mouseover',()=>l.setStyle({weight:2,color:'#000'}));l.on('mouseout',()=>l.setStyle({weight:0.6,color:'#fff'}));}}).addTo(map);
   legend();
 }
