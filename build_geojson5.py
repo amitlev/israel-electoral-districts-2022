@@ -116,6 +116,7 @@ def build(n):
         pv=data['V'][m].sum(0);tot=int(pv.sum());wp=data['parties'][int(np.argmax(pv))]
         bl={b:int(sum(pv[idx[p]] for p in ps if p in idx)) for b,ps in BLOC4.items()}
         wb=max(bl,key=bl.get);srt=sorted(pv,reverse=True)
+        pp={p:round(100*pv[idx[p]]/tot,1) for ps in BLOC4.values() for p in ps if p in idx and pv[idx[p]]>0}
         cs=np.unique(data['city'][m])
         cw=sorted(((c,int(data['W'][m&(data['city']==c)].sum())) for c in cs),key=lambda x:-x[1])
         names=[c for c,_ in cw]
@@ -123,7 +124,7 @@ def build(n):
         gm=mapping(g);gm['coordinates']=rnd(gm['coordinates'])
         feats.append({"type":"Feature","properties":{"d":d,"v":tot,"wp":wp,"wb":wb,
             "m":round(100*(srt[0]-srt[1])/tot,1),"b":[round(100*bl[x]/tot) for x in BLOC4],
-            "s":names[:14],"sn":len(names)},"geometry":gm})
+            "pp":pp,"s":names[:14],"sn":len(names)},"geometry":gm})
     # overlap check
     ov=(sum(g.area for g in geoms.values())-unary_union(list(geoms.values())).area)/unary_union(list(geoms.values())).area*100
     return {"type":"FeatureCollection","features":feats},ov
