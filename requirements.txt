@@ -1,0 +1,8 @@
+numpy
+scipy
+shapely
+pyproj
+matplotlib
+python-bidi
+topojson
+openpyxl
