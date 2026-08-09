@@ -189,7 +189,7 @@ async function draw(){
   renderParliament(fc.features);
 }
 // re-color legend + parliament without reloading the map layer (for bloc/party toggle & edits)
-function recolor(){const n=snap(curN);if(!FC[n])return;if(layer)layer.setStyle(f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}));legend(FC[n].features);renderParliament(FC[n].features);}
+function recolor(){const n=snap(curN);if(!FC[n])return;if(layer){layer.setStyle(f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}));layer.eachLayer(l=>{if(l.feature&&l.getTooltip())l.setTooltipContent(tip(l.feature.properties));});}legend(FC[n].features);renderParliament(FC[n].features);}
 function hemiSlots(N){
   const R=Math.max(3,Math.round(Math.sqrt(N/3))),rIn=0.5;
   const radii=[];for(let i=0;i<R;i++)radii.push(rIn+(1-rIn)*(R===1?1:i/(R-1)));
