@@ -29,6 +29,20 @@
   .card h3{font-size:14px;margin:16px 0 3px;color:#1f6fb2}
   .card p{margin:0 0 6px}
   .card .x{position:sticky;top:-22px;float:left;cursor:pointer;border:0;background:#eee;border-radius:6px;padding:5px 11px;font-size:13px}
+  #edit-btn{margin-top:8px;width:100%;border:1px solid #888;color:#444;background:#fff;border-radius:8px;padding:7px;font-size:13px;cursor:pointer}
+  #edit-btn:hover{background:#f3f3f3}
+  .brow{display:flex;align-items:center;gap:8px;margin:6px 0}
+  .brow input[type=color]{width:34px;height:30px;padding:0;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer}
+  .brow input[type=text]{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit}
+  .brow .del{border:0;background:#f0f0f0;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;color:#c0392b}
+  .brow .del:hover{background:#fbe3e0}
+  #add-bloc{margin-top:8px;border:1px dashed #1f6fb2;color:#1f6fb2;background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
+  #add-bloc:hover{background:#eef5fc}
+  .prow{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
+  .prow label{flex:1}
+  .prow select{padding:5px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+  #reset-blocs{border:1px solid #ccc;color:#555;background:#fff;border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer}
+  #reset-blocs:hover{background:#f3f3f3}
 </style>
 </head>
 <body>
@@ -41,6 +55,7 @@
   <div class="lbl">צביעה</div>
   <div class="seg" id="cseg"><button data-c="bloc" class="on">גושים</button><button data-c="party">מפלגה זוכה</button></div>
   <div id="legend"></div>
+  <button id="edit-btn">✎ עריכת גושים</button>
   <button id="about-btn">על השיטה ›</button>
   <div class="foot">ריחוף על מחוז לפירוט · שטח ≠ קולות</div>
 </div>
@@ -62,33 +77,70 @@
     <p>שטח ≠ קולות — מחוזות מדבריים ענקיים דלילי-אוכלוסין. המספרים הם סימולציה על תוצאות אמיתיות, לא בחירות אמיתיות. החלוקה אינה "מקוננת": n שונה מייצר חלוקה שונה. אימות: ספירת הזוכים והגושים זהה לחישוב הישיר מהקלפיות.</p>
   </div>
 </div>
+<div class="overlay" id="editor">
+  <div class="card">
+    <button class="x" id="editor-close">✕ סגירה</button>
+    <h2>עריכת גושים ומפלגות</h2>
+    <p style="font-size:12px;color:#666;margin-bottom:10px">שנה שם וצבע של גוש, הוסף או מחק גושים, ושייך כל מפלגה לגוש. המפה מתעדכנת מיד.</p>
+    <h3>גושים</h3>
+    <div id="bloc-editor"></div>
+    <button id="add-bloc">+ הוסף גוש</button>
+    <h3>שיוך מפלגות</h3>
+    <div id="party-editor"></div>
+    <div style="margin-top:16px"><button id="reset-blocs">איפוס לברירת מחדל</button></div>
+  </div>
+</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const PARTYNAMES={'מחל':'הליכוד','פה':'יש עתיד','ט':'הציונות הדתית','כן':'המחנה הממלכתי','שס':'ש"ס','ג':'יהדות התורה','ל':'ישראל ביתנו','עם':'רע"מ','ום':'חד"ש-תע"ל','אמת':'העבודה','מרצ':'מרצ','ד':'בל"ד'};
 const PCOL={'מחל':'#1f6fb2','פה':'#5bc8e8','ט':'#2b1a4a','שס':'#111111','ג':'#8a6d3b','כן':'#8e44ad','ל':'#d4a017','עם':'#1e8449','ום':'#c0392b','אמת':'#e74c3c','מרצ':'#27ae60','ד':'#16a085'};
-const BLOCS=['ימין','מרכז-שמאל','חרדי','ערבי'];
-const BLOCCOL={'ימין':'#1f6fb2','מרכז-שמאל':'#dc2626','חרדי':'#111111','ערבי':'#1e8449'};
-const BLOCPARTIES={'ימין':['מחל','ט'],'מרכז-שמאל':['פה','כן','אמת','מרצ','ל'],'חרדי':['שס','ג'],'ערבי':['ום','עם','ד']};
+const ALLPARTIES=Object.keys(PARTYNAMES);
+const DEFAULT_BLOCS=[
+  {name:'ימין',color:'#1f6fb2',parties:['מחל','ט']},
+  {name:'מרכז-שמאל',color:'#dc2626',parties:['פה','כן','אמת','מרצ','ל']},
+  {name:'חרדי',color:'#111111',parties:['שס','ג']},
+  {name:'ערבי',color:'#1e8449',parties:['ום','עם','ד']}
+];
+const NEWCOLORS=['#8e44ad','#d4a017','#16a085','#e67e22','#7f8c8d','#2c3e50','#c0392b','#27ae60'];
+function loadBlocs(){
+  try{const s=JSON.parse(localStorage.getItem('blocConfig'));
+    if(Array.isArray(s)&&s.length&&s.every(b=>b&&b.name&&b.color&&Array.isArray(b.parties)))return s;}catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_BLOCS));
+}
+let blocs=loadBlocs();
+function saveBlocs(){try{localStorage.setItem('blocConfig',JSON.stringify(blocs));}catch(e){}}
+function winningBloc(pp){
+  let best=null,bv=-1;
+  for(const bl of blocs){let s=0;for(const pt of bl.parties)s+=(pp[pt]||0);if(s>bv){bv=s;best=bl;}}
+  return bv>0?best:null;
+}
 let curN='n120',curC='bloc',layer=null,DATA=null;
 const map=L.map('map').setView([31.3,34.9],7.4);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   {attribution:'&copy; OpenStreetMap, &copy; CARTO',subdomains:'abcd',maxZoom:16}).addTo(map);
-function colorOf(p){return curC==='bloc'?BLOCCOL[p.wb]:(PCOL[p.wp]||'#999');}
+function colorOf(p){if(curC!=='bloc')return PCOL[p.wp]||'#999';const bl=winningBloc(p.pp||{});return bl?bl.color:'#999';}
 function tip(p){
-  const b=p.b||[0,0,0,0],pp=p.pp||{};
-  const rows=BLOCS.map((k,i)=>[k,b[i]||0]).sort((x,y)=>y[1]-x[1])
-    .map(([k,v])=>{
-      const parties=(BLOCPARTIES[k]||[]).map(party=>[party,pp[party]||0]).filter(([,pc])=>pc>0).sort((x,y)=>y[1]-x[1])
-        .map(([party,pc])=>`<div style="padding-right:18px;color:#666">${PARTYNAMES[party]||party}: ${pc}%</div>`).join('');
-      return `<div><span class="sw" style="background:${BLOCCOL[k]}"></span>${k}: ${v}%</div>${parties}`;
-    }).join('');
+  const pp=p.pp||{};
+  const totals=blocs.map(bl=>{let s=0;for(const pt of bl.parties)s+=(pp[pt]||0);return{bl,v:Math.round(s)};})
+    .sort((x,y)=>y.v-x.v);
+  const win=totals.find(t=>t.v>0);
+  const rows=totals.map(({bl,v})=>{
+    const parties=bl.parties.map(pt=>[pt,pp[pt]||0]).filter(([,pc])=>pc>0).sort((x,y)=>y[1]-x[1])
+      .map(([pt,pc])=>`<div style="padding-right:18px;color:#666">${PARTYNAMES[pt]||pt}: ${pc}%</div>`).join('');
+    return `<div><span class="sw" style="background:${bl.color}"></span>${bl.name}: ${v}%</div>${parties}`;
+  }).join('');
   const s=p.s||[],sn=p.sn||s.length,more=sn>s.length?` ועוד ${sn-s.length}`:'';
   const setl=s.length?`<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px;color:#444"><b>יישובים (${sn}):</b> ${s.join(', ')}${more}</div>`:'';
-  return `<b>מחוז ${p.d}</b> · ${(p.v||0).toLocaleString()} מצביעים<br>מפלגה מובילה: <b>${PARTYNAMES[p.wp]||p.wp}</b> · מרווח ${p.m}%<br>גוש מוביל: <b>${p.wb}</b><hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
+  return `<b>מחוז ${p.d}</b> · ${(p.v||0).toLocaleString()} מצביעים<br>מפלגה מובילה: <b>${PARTYNAMES[p.wp]||p.wp}</b> · מרווח ${p.m}%<br>גוש מוביל: <b>${win?win.bl.name:'—'}</b><hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
 }
 function legend(){
   const f=DATA[curN].features,cnt={},colf={};
-  f.forEach(x=>{const k=curC==='bloc'?x.properties.wb:x.properties.wp;cnt[k]=(cnt[k]||0)+1;colf[k]=colorOf(x.properties);});
+  f.forEach(x=>{
+    let k,col;
+    if(curC==='bloc'){const bl=winningBloc(x.properties.pp||{});k=bl?bl.name:'—';col=bl?bl.color:'#999';}
+    else{k=x.properties.wp;col=colorOf(x.properties);}
+    cnt[k]=(cnt[k]||0)+1;colf[k]=col;
+  });
   const nm=k=>curC==='bloc'?k:(PARTYNAMES[k]||k);
   document.getElementById('legend').innerHTML=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])
     .map(k=>`<div><span class="sw" style="background:${colf[k]}"></span>${nm(k)} <b>(${cnt[k]})</b></div>`).join('');
@@ -106,6 +158,57 @@ const ab=document.getElementById('about');
 document.getElementById('about-btn').onclick=()=>ab.classList.add('on');
 document.getElementById('about-close').onclick=()=>ab.classList.remove('on');
 ab.onclick=e=>{if(e.target===ab)ab.classList.remove('on');};
+
+/* ---- bloc/party editor ---- */
+function applyEdit(){saveBlocs();if(DATA)draw();}
+function renderBlocEditor(){
+  const c=document.getElementById('bloc-editor');c.innerHTML='';
+  blocs.forEach((bl,i)=>{
+    const row=document.createElement('div');row.className='brow';
+    const col=document.createElement('input');col.type='color';col.value=bl.color;
+    col.oninput=()=>{bl.color=col.value;applyEdit();};
+    const nm=document.createElement('input');nm.type='text';nm.value=bl.name;
+    nm.oninput=()=>{bl.name=nm.value;applyEdit();refreshPartyOptions();};
+    const del=document.createElement('button');del.className='del';del.textContent='✕';del.title='מחק גוש';
+    del.onclick=()=>{blocs.splice(i,1);renderBlocEditor();renderPartyEditor();applyEdit();};
+    row.append(col,nm,del);c.appendChild(row);
+  });
+}
+function renderPartyEditor(){
+  const c=document.getElementById('party-editor');c.innerHTML='';
+  ALLPARTIES.forEach(pt=>{
+    const row=document.createElement('div');row.className='prow';
+    const sw=document.createElement('span');sw.className='sw';sw.style.background=PCOL[pt]||'#999';
+    const lab=document.createElement('label');lab.textContent=PARTYNAMES[pt]||pt;
+    const sel=document.createElement('select');sel.dataset.party=pt;
+    row.append(sw,lab,sel);c.appendChild(row);
+  });
+  refreshPartyOptions();
+}
+function refreshPartyOptions(){
+  document.querySelectorAll('#party-editor select').forEach(sel=>{
+    const pt=sel.dataset.party,cur=blocs.findIndex(b=>b.parties.includes(pt));
+    sel.innerHTML='<option value="">— ללא —</option>'+blocs.map((b,i)=>`<option value="${i}">${b.name||'(ללא שם)'}</option>`).join('');
+    sel.value=cur<0?'':String(cur);
+    sel.onchange=()=>{
+      blocs.forEach(b=>{const j=b.parties.indexOf(pt);if(j>=0)b.parties.splice(j,1);});
+      if(sel.value!=='')blocs[+sel.value].parties.push(pt);
+      applyEdit();
+    };
+  });
+}
+document.getElementById('add-bloc').onclick=()=>{
+  blocs.push({name:'גוש חדש',color:NEWCOLORS[blocs.length%NEWCOLORS.length],parties:[]});
+  renderBlocEditor();renderPartyEditor();applyEdit();
+};
+document.getElementById('reset-blocs').onclick=()=>{
+  blocs=JSON.parse(JSON.stringify(DEFAULT_BLOCS));
+  renderBlocEditor();renderPartyEditor();applyEdit();
+};
+const ed=document.getElementById('editor');
+document.getElementById('edit-btn').onclick=()=>{renderBlocEditor();renderPartyEditor();ed.classList.add('on');};
+document.getElementById('editor-close').onclick=()=>ed.classList.remove('on');
+ed.onclick=e=>{if(e.target===ed)ed.classList.remove('on');};
 fetch('mapdata.json').then(r=>r.json()).then(d=>{DATA=d;if(d.outline)L.geoJSON(d.outline,{style:{color:'#333',weight:1.3,fill:false}}).addTo(map);draw();})
   .catch(e=>{document.getElementById('legend').innerHTML='<span style="color:#c00">שגיאה בטעינת mapdata.json</span>';});
 </script>
