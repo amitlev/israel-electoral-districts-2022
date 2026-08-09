@@ -157,8 +157,12 @@ def cleanup_fragments(geoms, passes=3):
         if moved==0: break
     return geoms
 
-isr_ll=transform(lambda x,y:T.transform(x,y),isr.simplify(250));om=mapping(isr_ll);om['coordinates']=rnd(om['coordinates'])
-o120,ov1=build(120);o215,ov2=build(215)
-out={"n120":o120,"n215":o215,"outline":om}
-json.dump(out,open('mapdata_new.json','w'),ensure_ascii=False,separators=(',',':'))
-import os;print("bytes:",os.path.getsize('mapdata_new.json'),"overlap%:",round(ov1,4),round(ov2,4))
+def outline_ll():
+    isr_ll=transform(lambda x,y:T.transform(x,y),isr.simplify(250));om=mapping(isr_ll);om['coordinates']=rnd(om['coordinates']);return om
+
+if __name__=="__main__":
+    om=outline_ll()
+    o120,ov1=build(120);o215,ov2=build(215)
+    out={"n120":o120,"n215":o215,"outline":om}
+    json.dump(out,open('mapdata_new.json','w'),ensure_ascii=False,separators=(',',':'))
+    import os;print("bytes:",os.path.getsize('mapdata_new.json'),"overlap%:",round(ov1,4),round(ov2,4))

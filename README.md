@@ -15,19 +15,20 @@ pip install -r requirements.txt
 | קובץ | תיאור |
 |------|--------|
 | `engine.py` | מנוע החלוקה למחוזות — חלוקה בינארית רקורסיבית (RCB) לכל n, שווי-אוכלוסייה ורציף. הפונקציה `solve(data, n, alpha)` מחזירה שיוך קלפי→מחוז. |
-| `build_geojson5.py` | בונה את `mapdata.json` (GeoJSON ל-n=120 ו-215) + מפות. כולל פיצול ערים אורגני (תת-Voronoi קפסיטטיבי) וניקוי רסיסים. |
+| `build_geojson5.py` | בונה GeoJSON למחוז (`build(n)`). כולל פיצול ערים אורגני (תת-Voronoi קפסיטטיבי) וניקוי רסיסים. |
+| `build_maps.py` | מייצר `maps/n<N>.json` לכל מספר מושבים (120–400 בקפיצות של 10, וגם 215) + `outline.json`. |
 | `blocsim.py` | סימולציית גושים (ימין / מרכז-שמאל / חרדי / ערבי), 4 או 5 גושים. |
 | `isr.topo.json` | גבול ישראל (TopoJSON, WGS84). |
 | `isr_itm.pkl` | גבול ישראל מומר לרשת ישראל (ITM, EPSG:2039) — משמש לחיתוך המפות. |
 | `data/ballots_2022.csv` | תוצאות ברמת קלפי (עמודות מפלגות לפי אות). |
 | `data/settlement_coords.csv` | קואורדינטות יישובים (ITM). |
-| `index.html` + `mapdata.json` | המפה האינטראקטיבית (Leaflet). |
+| `index.html` + `maps/` + `outline.json` | המפה האינטראקטיבית (Leaflet) עם סרגל מושבים (120–400) והרכב פרלמנט. הקבצים נטענים לפי דרישה. |
 
 ## הרצה
 
 ```bash
 python3 engine.py              # מדפיס הרכב גושים ל-n שונים
-python3 build_geojson5.py      # מייצר mapdata.json מחדש
+python3 build_maps.py          # מייצר maps/n<N>.json + outline.json לכל המושבים
 python3 blocsim.py             # סימולציית גושים + מפות
 ```
 
