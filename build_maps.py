@@ -10,7 +10,7 @@ Usage:  venv/bin/python build_maps.py
 import os, json, time
 import build_geojson5 as B
 
-STEP = 10
+STEP = 5
 STOPS = list(range(120, 401, STEP))
 if 215 not in STOPS:
     STOPS.append(215)

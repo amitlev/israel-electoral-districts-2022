@@ -18,12 +18,12 @@
   #nrow{display:flex;align-items:center;gap:9px;margin-bottom:8px}
   #nslider{flex:1;accent-color:#1f6fb2}
   #nval{font-weight:700;font-size:14px;min-width:32px;text-align:center}
-  .ppanel{position:absolute;top:12px;left:12px;z-index:1000;background:#fff;border-radius:10px;
-    box-shadow:0 1px 6px rgba(0,0,0,.2);padding:10px 13px;width:342px;max-width:44vw}
-  .ppanel h2{font-size:14px;margin:0 0 2px}
-  .ppanel .sub{font-size:11px;color:#777;margin:0 0 2px}
+  .ppanel{position:absolute;top:12px;left:12px;z-index:1000;background:#fff;border-radius:11px;
+    box-shadow:0 1px 6px rgba(0,0,0,.2);padding:12px 15px;width:454px;max-width:48vw}
+  .ppanel h2{font-size:16px;margin:0 0 2px}
+  .ppanel .sub{font-size:12px;color:#777;margin:0 0 2px}
   #hemi{width:100%;height:auto;display:block}
-  #plegend{display:flex;flex-wrap:wrap;gap:3px 13px;font-size:12px;margin-top:2px}
+  #plegend{display:flex;flex-wrap:wrap;gap:4px 15px;font-size:13px;margin-top:3px}
   #plegend .it{display:flex;align-items:center;gap:5px}
   #plegend .sw{width:11px;height:11px;border-radius:3px;flex:none}
   .lbl{font-size:11px;color:#888;margin:6px 0 3px}
@@ -47,6 +47,9 @@
   .brow input[type=text]{flex:1;padding:6px 8px;border:1px solid #ccc;border-radius:6px;font-size:13px;font-family:inherit}
   .brow .del{border:0;background:#f0f0f0;border-radius:6px;padding:6px 10px;font-size:12px;cursor:pointer;color:#c0392b}
   .brow .del:hover{background:#fbe3e0}
+  .brow .mv{border:0;background:#f0f0f0;border-radius:6px;padding:6px 7px;font-size:11px;cursor:pointer;color:#555;line-height:1}
+  .brow .mv:hover:not(:disabled){background:#e2e2e2}
+  .brow .mv:disabled{opacity:.3;cursor:default}
   #add-bloc{margin-top:8px;border:1px dashed #1f6fb2;color:#1f6fb2;background:#fff;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer}
   #add-bloc:hover{background:#eef5fc}
   .prow{display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px}
@@ -68,7 +71,7 @@
   <h1>מחוזות בחירה אזוריים</h1>
   <p>סימולציה על תוצאות בחירות 2022 לפי קלפי. מחוזות שווי-אוכלוסייה, שיטת "המנצח לוקח הכול".</p>
   <div class="lbl">מספר מושבים (מחוזות)</div>
-  <div id="nrow"><input type="range" id="nslider" min="120" max="400" step="10" value="120"><span id="nval">120</span></div>
+  <div id="nrow"><input type="range" id="nslider" min="120" max="400" step="5" value="120"><span id="nval">120</span></div>
   <div class="seg" id="nseg"><button data-n="120" class="on">120</button><button data-n="215">215</button></div>
   <div class="lbl">צביעה</div>
   <div class="seg" id="cseg"><button data-c="bloc" class="on">גושים</button><button data-c="party">מפלגה זוכה</button></div>
@@ -101,6 +104,7 @@
     <h2>עריכת גושים ומפלגות</h2>
     <p style="font-size:12px;color:#666;margin-bottom:10px">שנה שם וצבע של גוש, הוסף או מחק גושים, ושייך כל מפלגה לגוש. המפה מתעדכנת מיד.</p>
     <h3>גושים</h3>
+    <p style="font-size:11px;color:#888;margin:0 0 6px">הסדר (למעלה→למטה) קובע את סדר הגושים בקשת הפרלמנט (שמאל→ימין). ▲▼ לשינוי הסדר.</p>
     <div id="bloc-editor"></div>
     <button id="add-bloc">+ הוסף גוש</button>
     <h3>שיוך מפלגות</h3>
@@ -113,11 +117,12 @@
 const PARTYNAMES={'מחל':'הליכוד','פה':'יש עתיד','ט':'הציונות הדתית','כן':'המחנה הממלכתי','שס':'ש"ס','ג':'יהדות התורה','ל':'ישראל ביתנו','עם':'רע"מ','ום':'חד"ש-תע"ל','אמת':'העבודה','מרצ':'מרצ','ד':'בל"ד'};
 const PCOL={'מחל':'#1f6fb2','פה':'#5bc8e8','ט':'#2b1a4a','שס':'#111111','ג':'#8a6d3b','כן':'#8e44ad','ל':'#d4a017','עם':'#1e8449','ום':'#c0392b','אמת':'#e74c3c','מרצ':'#27ae60','ד':'#16a085'};
 const ALLPARTIES=Object.keys(PARTYNAMES);
+// default order = political spectrum, left->right (also the hemicycle order in bloc mode)
 const DEFAULT_BLOCS=[
-  {name:'ימין',color:'#1f6fb2',parties:['מחל','ט']},
+  {name:'ערבי',color:'#1e8449',parties:['ום','עם','ד']},
   {name:'מרכז-שמאל',color:'#dc2626',parties:['פה','כן','אמת','מרצ','ל']},
-  {name:'חרדי',color:'#111111',parties:['שס','ג']},
-  {name:'ערבי',color:'#1e8449',parties:['ום','עם','ד']}
+  {name:'ימין',color:'#1f6fb2',parties:['מחל','ט']},
+  {name:'חרדי',color:'#111111',parties:['שס','ג']}
 ];
 const NEWCOLORS=['#8e44ad','#d4a017','#16a085','#e67e22','#7f8c8d','#2c3e50','#c0392b','#27ae60'];
 function loadBlocs(){
@@ -134,12 +139,11 @@ function winningBloc(pp){
 }
 let curN=120,curC='bloc',layer=null;
 const FC={};                                   // cache: seat-count -> FeatureCollection
-const STOPS=(()=>{const s=[];for(let n=120;n<=400;n+=10)s.push(n);if(!s.includes(215))s.push(215);return s.sort((a,b)=>a-b);})();
+const STOPS=(()=>{const s=[];for(let n=120;n<=400;n+=5)s.push(n);if(!s.includes(215))s.push(215);return s.sort((a,b)=>a-b);})();
 function snap(n){if(FC[n])return n;let best=STOPS[0];for(const s of STOPS)if(Math.abs(s-n)<Math.abs(best-n))best=s;return best;}
 function loadN(n){n=snap(n);if(FC[n])return Promise.resolve(n);return fetch('maps/n'+n+'.json').then(r=>r.json()).then(fc=>{FC[n]=fc;return n;});}
-// political lean for hemicycle ordering (from engine.py RIGHT/LEFT sets)
-const RIGHTSET=new Set(['מחל','ט','שס','ג','ל','ב']),LEFTSET=new Set(['פה','כן','אמת','מרצ','עם','ום','ד']);
-const plean=p=>RIGHTSET.has(p)?1:(LEFTSET.has(p)?-1:0);
+// explicit party spectrum, left->right (used for hemicycle order in party mode)
+const PLRANK={'ום':0,'ד':1,'עם':2,'מרצ':3,'אמת':4,'כן':5,'פה':6,'ל':7,'מחל':8,'ט':9,'שס':10,'ג':11};
 const map=L.map('map',{zoomControl:false}).setView([31.3,34.9],7.4);
 L.control.zoom({position:'bottomleft'}).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
@@ -208,8 +212,11 @@ function renderParliament(features){
     if(curC==='bloc'){const bl=winningBloc(p.pp||{});key=bl?bl.name:'—';color=bl?bl.color:'#999';name=bl?bl.name:'ללא';}
     else{key=p.wp;color=PCOL[key]||'#999';name=PARTYNAMES[key]||key;}
     (groups[key]||(groups[key]={color,name,key,seats:0})).seats++;});
-  const glean=key=>{if(curC!=='bloc')return plean(key);const bl=blocs.find(b=>b.name===key);return(!bl||!bl.parties.length)?0:bl.parties.reduce((a,p)=>a+plean(p),0)/bl.parties.length;};
-  const order=Object.values(groups).map(g=>({...g,lean:glean(g.key)})).sort((a,b)=>a.lean-b.lean||b.seats-a.seats);
+  // arc order left->right: bloc mode = editor order; party mode = explicit spectrum
+  const rank=curC==='bloc'
+    ?(key=>{const i=blocs.findIndex(b=>b.name===key);return i<0?999:i;})
+    :(key=>PLRANK[key]??999);
+  const order=Object.values(groups).sort((a,b)=>rank(a.key)-rank(b.key)||b.seats-a.seats);
   const seq=[];order.forEach(g=>{for(let i=0;i<g.seats;i++)seq.push(g.color);});
   const{slots,dr}=hemiSlots(N);
   const dots=slots.map((s,i)=>`<circle cx="${(cx+s.r*rO*Math.cos(s.ang)).toFixed(1)}" cy="${(cy-s.r*rO*Math.sin(s.ang)).toFixed(1)}" r="${dr.toFixed(1)}" fill="${seq[i]||'#ccc'}"/>`).join('');
@@ -240,9 +247,13 @@ function renderBlocEditor(){
     col.oninput=()=>{bl.color=col.value;applyEdit();};
     const nm=document.createElement('input');nm.type='text';nm.value=bl.name;
     nm.oninput=()=>{bl.name=nm.value;applyEdit();refreshPartyOptions();};
+    const up=document.createElement('button');up.className='mv';up.textContent='▲';up.title='הזז שמאלה בקשת';up.disabled=i===0;
+    up.onclick=()=>{[blocs[i-1],blocs[i]]=[blocs[i],blocs[i-1]];renderBlocEditor();applyEdit();};
+    const dn=document.createElement('button');dn.className='mv';dn.textContent='▼';dn.title='הזז ימינה בקשת';dn.disabled=i===blocs.length-1;
+    dn.onclick=()=>{[blocs[i+1],blocs[i]]=[blocs[i],blocs[i+1]];renderBlocEditor();applyEdit();};
     const del=document.createElement('button');del.className='del';del.textContent='✕';del.title='מחק גוש';
     del.onclick=()=>{blocs.splice(i,1);renderBlocEditor();renderPartyEditor();applyEdit();};
-    row.append(col,nm,del);c.appendChild(row);
+    row.append(col,nm,up,dn,del);c.appendChild(row);
   });
 }
 function renderPartyEditor(){
