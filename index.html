@@ -15,6 +15,17 @@
   .seg{display:flex;border:1px solid #ddd;border-radius:8px;overflow:hidden;margin-bottom:8px}
   .seg button{flex:1;border:0;background:#fff;padding:7px 6px;font-size:13px;cursor:pointer}
   .seg button.on{background:#1f6fb2;color:#fff}
+  #nrow{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  #nslider{flex:1;accent-color:#1f6fb2}
+  #nval{font-weight:700;font-size:14px;min-width:32px;text-align:center}
+  .ppanel{position:absolute;top:12px;left:12px;z-index:1000;background:#fff;border-radius:10px;
+    box-shadow:0 1px 6px rgba(0,0,0,.2);padding:10px 13px;width:342px;max-width:44vw}
+  .ppanel h2{font-size:14px;margin:0 0 2px}
+  .ppanel .sub{font-size:11px;color:#777;margin:0 0 2px}
+  #hemi{width:100%;height:auto;display:block}
+  #plegend{display:flex;flex-wrap:wrap;gap:3px 13px;font-size:12px;margin-top:2px}
+  #plegend .it{display:flex;align-items:center;gap:5px}
+  #plegend .sw{width:11px;height:11px;border-radius:3px;flex:none}
   .lbl{font-size:11px;color:#888;margin:6px 0 3px}
   #legend{font-size:12px;line-height:1.7;margin-top:6px}
   #legend span.sw,.leaflet-tooltip .sw{display:inline-block;width:12px;height:12px;border-radius:3px;margin-left:6px;vertical-align:-1px}
@@ -47,11 +58,18 @@
 </head>
 <body>
 <div id="map"></div>
+<div class="ppanel" id="parliament">
+  <h2>הרכב הפרלמנט</h2>
+  <div class="sub" id="psub"></div>
+  <svg id="hemi" viewBox="0 0 400 214" xmlns="http://www.w3.org/2000/svg"></svg>
+  <div id="plegend"></div>
+</div>
 <div class="panel">
   <h1>מחוזות בחירה אזוריים</h1>
   <p>סימולציה על תוצאות בחירות 2022 לפי קלפי. מחוזות שווי-אוכלוסייה, שיטת "המנצח לוקח הכול".</p>
-  <div class="lbl">מספר מחוזות</div>
-  <div class="seg" id="nseg"><button data-n="n120" class="on">120</button><button data-n="n215">215</button></div>
+  <div class="lbl">מספר מושבים (מחוזות)</div>
+  <div id="nrow"><input type="range" id="nslider" min="120" max="400" step="10" value="120"><span id="nval">120</span></div>
+  <div class="seg" id="nseg"><button data-n="120" class="on">120</button><button data-n="215">215</button></div>
   <div class="lbl">צביעה</div>
   <div class="seg" id="cseg"><button data-c="bloc" class="on">גושים</button><button data-c="party">מפלגה זוכה</button></div>
   <div id="legend"></div>
@@ -114,8 +132,16 @@ function winningBloc(pp){
   for(const bl of blocs){let s=0;for(const pt of bl.parties)s+=(pp[pt]||0);if(s>bv){bv=s;best=bl;}}
   return bv>0?best:null;
 }
-let curN='n120',curC='bloc',layer=null,DATA=null;
-const map=L.map('map').setView([31.3,34.9],7.4);
+let curN=120,curC='bloc',layer=null;
+const FC={};                                   // cache: seat-count -> FeatureCollection
+const STOPS=(()=>{const s=[];for(let n=120;n<=400;n+=10)s.push(n);if(!s.includes(215))s.push(215);return s.sort((a,b)=>a-b);})();
+function snap(n){if(FC[n])return n;let best=STOPS[0];for(const s of STOPS)if(Math.abs(s-n)<Math.abs(best-n))best=s;return best;}
+function loadN(n){n=snap(n);if(FC[n])return Promise.resolve(n);return fetch('maps/n'+n+'.json').then(r=>r.json()).then(fc=>{FC[n]=fc;return n;});}
+// political lean for hemicycle ordering (from engine.py RIGHT/LEFT sets)
+const RIGHTSET=new Set(['מחל','ט','שס','ג','ל','ב']),LEFTSET=new Set(['פה','כן','אמת','מרצ','עם','ום','ד']);
+const plean=p=>RIGHTSET.has(p)?1:(LEFTSET.has(p)?-1:0);
+const map=L.map('map',{zoomControl:false}).setView([31.3,34.9],7.4);
+L.control.zoom({position:'bottomleft'}).addTo(map);
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
   {attribution:'&copy; OpenStreetMap, &copy; CARTO',subdomains:'abcd',maxZoom:16}).addTo(map);
 function colorOf(p){if(curC!=='bloc')return PCOL[p.wp]||'#999';const bl=winningBloc(p.pp||{});return bl?bl.color:'#999';}
@@ -133,8 +159,8 @@ function tip(p){
   const setl=s.length?`<div style="margin-top:6px;border-top:1px solid #eee;padding-top:4px;color:#444"><b>יישובים (${sn}):</b> ${s.join(', ')}${more}</div>`:'';
   return `<b>מחוז ${p.d}</b> · ${(p.v||0).toLocaleString()} מצביעים<br>מפלגה מובילה: <b>${PARTYNAMES[p.wp]||p.wp}</b> · מרווח ${p.m}%<br>גוש מוביל: <b>${win?win.bl.name:'—'}</b><hr style="margin:5px 0;border:0;border-top:1px solid #eee">${rows}${setl}`;
 }
-function legend(){
-  const f=DATA[curN].features,cnt={},colf={};
+function legend(features){
+  const f=features,cnt={},colf={};
   f.forEach(x=>{
     let k,col;
     if(curC==='bloc'){const bl=winningBloc(x.properties.pp||{});k=bl?bl.name:'—';col=bl?bl.color:'#999';}
@@ -145,22 +171,67 @@ function legend(){
   document.getElementById('legend').innerHTML=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a])
     .map(k=>`<div><span class="sw" style="background:${colf[k]}"></span>${nm(k)} <b>(${cnt[k]})</b></div>`).join('');
 }
-function draw(){
+let drawSeq=0;
+async function draw(){
+  const seq=++drawSeq,n=snap(curN);
+  if(!FC[n]){await loadN(n);if(seq!==drawSeq)return;}   // stale drag → skip
+  const fc=FC[n];
   if(layer)map.removeLayer(layer);
-  layer=L.geoJSON(DATA[curN],{style:f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}),
+  layer=L.geoJSON(fc,{style:f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}),
     onEachFeature:(f,l)=>{try{l.bindTooltip(tip(f.properties),{className:'dt',sticky:true});}catch(e){}
       l.on('mouseover',()=>l.setStyle({weight:2,color:'#000'}));l.on('mouseout',()=>l.setStyle({weight:0.6,color:'#fff'}));}}).addTo(map);
-  legend();
+  legend(fc.features);
+  renderParliament(fc.features);
 }
-document.getElementById('nseg').onclick=e=>{if(!e.target.dataset.n)return;document.querySelectorAll('#nseg button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');curN=e.target.dataset.n;draw();};
-document.getElementById('cseg').onclick=e=>{if(!e.target.dataset.c)return;document.querySelectorAll('#cseg button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');curC=e.target.dataset.c;draw();};
+// re-color legend + parliament without reloading the map layer (for bloc/party toggle & edits)
+function recolor(){const n=snap(curN);if(!FC[n])return;if(layer)layer.setStyle(f=>({color:'#fff',weight:0.6,fillColor:colorOf(f.properties),fillOpacity:0.82}));legend(FC[n].features);renderParliament(FC[n].features);}
+function hemiSlots(N){
+  const R=Math.max(3,Math.round(Math.sqrt(N/3))),rIn=0.5;
+  const radii=[];for(let i=0;i<R;i++)radii.push(rIn+(1-rIn)*(R===1?1:i/(R-1)));
+  const sum=radii.reduce((a,b)=>a+b,0);
+  const per=radii.map(r=>Math.max(1,Math.round(N*r/sum)));
+  let d=N-per.reduce((a,b)=>a+b,0);
+  const byBig=radii.map((r,i)=>i).sort((a,b)=>radii[b]-radii[a]);
+  for(let k=0;d!==0&&k<100000;k++){const i=byBig[k%R];if(d>0){per[i]++;d--;}else if(per[i]>1){per[i]--;d++;}}
+  const rowGap=R>1?(1-rIn)/(R-1):rIn;
+  let minChord=Infinity;radii.forEach((r,ri)=>{const ag=per[ri]>1?Math.PI/(per[ri]-1):Math.PI;minChord=Math.min(minChord,ag*r);});
+  let dr=0.45*Math.min(rowGap,minChord)*190;dr=Math.max(1.6,Math.min(dr,7));
+  const slots=[];
+  radii.forEach((r,ri)=>{const cnt=per[ri];for(let j=0;j<cnt;j++){const t=cnt===1?0.5:j/(cnt-1),ang=Math.PI*(1-t);slots.push({r,ang});}});
+  slots.sort((a,b)=>b.ang-a.ang||a.r-b.r);
+  return{slots,dr};
+}
+function renderParliament(features){
+  const N=features.length,cx=200,cy=200,rO=190;
+  const groups={};
+  features.forEach(f=>{const p=f.properties;let key,color,name;
+    if(curC==='bloc'){const bl=winningBloc(p.pp||{});key=bl?bl.name:'—';color=bl?bl.color:'#999';name=bl?bl.name:'ללא';}
+    else{key=p.wp;color=PCOL[key]||'#999';name=PARTYNAMES[key]||key;}
+    (groups[key]||(groups[key]={color,name,key,seats:0})).seats++;});
+  const glean=key=>{if(curC!=='bloc')return plean(key);const bl=blocs.find(b=>b.name===key);return(!bl||!bl.parties.length)?0:bl.parties.reduce((a,p)=>a+plean(p),0)/bl.parties.length;};
+  const order=Object.values(groups).map(g=>({...g,lean:glean(g.key)})).sort((a,b)=>a.lean-b.lean||b.seats-a.seats);
+  const seq=[];order.forEach(g=>{for(let i=0;i<g.seats;i++)seq.push(g.color);});
+  const{slots,dr}=hemiSlots(N);
+  const dots=slots.map((s,i)=>`<circle cx="${(cx+s.r*rO*Math.cos(s.ang)).toFixed(1)}" cy="${(cy-s.r*rO*Math.sin(s.ang)).toFixed(1)}" r="${dr.toFixed(1)}" fill="${seq[i]||'#ccc'}"/>`).join('');
+  document.getElementById('hemi').innerHTML=dots+`<text x="${cx}" y="${cy-6}" text-anchor="middle" font-size="38" font-weight="700" fill="#222">${N}</text>`;
+  const maj=Math.floor(N/2)+1;
+  document.getElementById('psub').textContent=`${N} מושבים · רוב = ${maj}`;
+  document.getElementById('plegend').innerHTML=order.slice().sort((a,b)=>b.seats-a.seats)
+    .map(g=>`<div class="it"><span class="sw" style="background:${g.color}"></span>${g.name} <b>${g.seats}</b>${g.seats>=maj?' ✓':''}</div>`).join('');
+}
+const nslider=document.getElementById('nslider'),nval=document.getElementById('nval');
+function setPreset(v){document.querySelectorAll('#nseg button').forEach(b=>b.classList.toggle('on',+b.dataset.n===v));}
+let sldT=null;
+nslider.oninput=()=>{const v=+nslider.value;nval.textContent=v;curN=v;setPreset(v);clearTimeout(sldT);sldT=setTimeout(draw,110);};
+document.getElementById('nseg').onclick=e=>{if(!e.target.dataset.n)return;curN=+e.target.dataset.n;nslider.value=Math.min(400,Math.max(120,curN));nval.textContent=curN;setPreset(curN);draw();};
+document.getElementById('cseg').onclick=e=>{if(!e.target.dataset.c)return;document.querySelectorAll('#cseg button').forEach(b=>b.classList.remove('on'));e.target.classList.add('on');curC=e.target.dataset.c;recolor();};
 const ab=document.getElementById('about');
 document.getElementById('about-btn').onclick=()=>ab.classList.add('on');
 document.getElementById('about-close').onclick=()=>ab.classList.remove('on');
 ab.onclick=e=>{if(e.target===ab)ab.classList.remove('on');};
 
 /* ---- bloc/party editor ---- */
-function applyEdit(){saveBlocs();if(DATA)draw();}
+function applyEdit(){saveBlocs();recolor();}
 function renderBlocEditor(){
   const c=document.getElementById('bloc-editor');c.innerHTML='';
   blocs.forEach((bl,i)=>{
@@ -209,8 +280,8 @@ const ed=document.getElementById('editor');
 document.getElementById('edit-btn').onclick=()=>{renderBlocEditor();renderPartyEditor();ed.classList.add('on');};
 document.getElementById('editor-close').onclick=()=>ed.classList.remove('on');
 ed.onclick=e=>{if(e.target===ed)ed.classList.remove('on');};
-fetch('mapdata.json').then(r=>r.json()).then(d=>{DATA=d;if(d.outline)L.geoJSON(d.outline,{style:{color:'#333',weight:1.3,fill:false}}).addTo(map);draw();})
-  .catch(e=>{document.getElementById('legend').innerHTML='<span style="color:#c00">שגיאה בטעינת mapdata.json</span>';});
+fetch('outline.json').then(r=>r.json()).then(o=>{if(o)L.geoJSON(o,{style:{color:'#333',weight:1.3,fill:false}}).addTo(map);}).catch(e=>{});
+draw().catch(e=>{document.getElementById('legend').innerHTML='<span style="color:#c00">שגיאה בטעינת נתוני המפה</span>';});
 </script>
 </body>
 </html>
