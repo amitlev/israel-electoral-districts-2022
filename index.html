@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   body{margin:0;font-family:-apple-system,Segoe UI,Arial,sans-serif;color:#1a1a1a}
-  #map{position:absolute;top:0;bottom:0;left:0;right:0}
+  #map{position:absolute;top:0;bottom:0;left:0;right:0;background:#eef0f2}
+  .leaflet-tile-pane{filter:grayscale(1) brightness(1.08) contrast(.88);opacity:.85}
   .panel{position:absolute;top:12px;right:12px;z-index:1000;background:#fff;border-radius:10px;
     box-shadow:0 1px 6px rgba(0,0,0,.2);padding:12px 14px;max-width:270px}
   .panel h1{font-size:15px;margin:0 0 4px}
@@ -147,8 +148,9 @@ function loadN(n){n=snap(n);if(FC[n])return Promise.resolve(n);return fetch('map
 const PLRANK={'ום':0,'ד':1,'עם':2,'מרצ':3,'אמת':4,'כן':5,'פה':6,'ל':7,'מחל':8,'ט':9,'שס':10,'ג':11};
 const map=L.map('map',{zoomControl:false}).setView([31.3,34.9],7.4);
 L.control.zoom({position:'bottomleft'}).addTo(map);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-  {attribution:'&copy; OpenStreetMap, &copy; CARTO',subdomains:'abcd',maxZoom:16}).addTo(map);
+// OpenStreetMap's own tiles (no API key); greyed out in CSS (.leaflet-tile-pane) so the districts stand out
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+  {attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',maxZoom:16}).addTo(map);
 function colorOf(p){if(curC!=='bloc')return PCOL[p.wp]||'#999';const bl=winningBloc(p.pp||{});return bl?bl.color:'#999';}
 function tip(p){
   const pp=p.pp||{};
