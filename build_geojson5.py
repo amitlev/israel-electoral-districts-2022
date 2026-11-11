@@ -1,15 +1,22 @@
-import numpy as np, pickle, json
+import numpy as np, pickle, json, os
 from scipy.spatial import Voronoi, Delaunay
 from scipy.optimize import linear_sum_assignment
 from shapely.geometry import Polygon, MultiPolygon, Point, MultiPoint, mapping
 from shapely.ops import unary_union, transform, voronoi_diagram
 from pyproj import Transformer
 import engine as E
-np.random.seed(1)
-data=E.load(); isr=pickle.load(open('isr_itm.pkl','rb'))
+isr=pickle.load(open(os.path.join(E.ROOT,'isr_itm.pkl'),'rb'))
 T=Transformer.from_crs('EPSG:2039','EPSG:4326',always_xy=True)
-BLOC4={'ימין':['מחל','ט'],'מרכז-שמאל':['פה','כן','אמת','מרצ','ל'],'חרדי':['שס','ג'],'ערבי':['ום','עם','ד']}
-idx={p:i for i,p in enumerate(data['parties'])}
+data=None; BLOC4=None; PPSET=None; idx=None
+
+def init(eid=None):
+    """Load one election (see elections.json) and set the module state build() uses."""
+    global data,BLOC4,PPSET,idx
+    data=E.load(eid); el=data['election']
+    BLOC4={b['name']:b['parties'] for b in el['blocs']}     # default blocs, in spectrum order
+    PPSET=[p['code'] for p in el['parties']]                # parties whose share is exported (pp)
+    idx={p:i for i,p in enumerate(data['parties'])}
+    return data
 
 def vpolys(points):
     mn=points.min(0)-60000;mx=points.max(0)+60000
@@ -79,6 +86,8 @@ def rnd(o,p=5):
     return o
 
 def build(n):
+    if data is None: init()
+    np.random.seed(1000+n)   # city-split cosmetics only; per-n seed => each file reproducible on its own
     a=E.solve(data,n,alpha=0.0,do_repair=False)
     # district global centroids (voter-weighted)
     dcent={}
@@ -116,15 +125,17 @@ def build(n):
         pv=data['V'][m].sum(0);tot=int(pv.sum());wp=data['parties'][int(np.argmax(pv))]
         bl={b:int(sum(pv[idx[p]] for p in ps if p in idx)) for b,ps in BLOC4.items()}
         wb=max(bl,key=bl.get);srt=sorted(pv,reverse=True)
-        pp={p:round(100*pv[idx[p]]/tot,1) for ps in BLOC4.values() for p in ps if p in idx and pv[idx[p]]>0}
+        if wp not in PPSET: raise ValueError(f"n={n} district {d}: winner {wp!r} is not listed in elections.json parties")
+        # raw votes (not rounded %) so the UI's live bloc recomputation is exact for any bloc assignment
+        pvd={p:int(pv[idx[p]]) for p in PPSET if p in idx and pv[idx[p]]>0}
         cs=np.unique(data['city'][m])
         cw=sorted(((c,int(data['W'][m&(data['city']==c)].sum())) for c in cs),key=lambda x:-x[1])
         names=[c for c,_ in cw]
         g=transform(lambda x,y:T.transform(x,y),geoms[d])
         gm=mapping(g);gm['coordinates']=rnd(gm['coordinates'])
         feats.append({"type":"Feature","properties":{"d":d,"v":tot,"wp":wp,"wb":wb,
-            "m":round(100*(srt[0]-srt[1])/tot,1),"b":[round(100*bl[x]/tot) for x in BLOC4],
-            "pp":pp,"s":names[:14],"sn":len(names)},"geometry":gm})
+            "m":round(100*(srt[0]-srt[1])/tot,1),"b":{x:round(100*bl[x]/tot) for x in BLOC4},
+            "pv":pvd,"s":names[:14],"sn":len(names)},"geometry":gm})
     # overlap check
     ov=(sum(g.area for g in geoms.values())-unary_union(list(geoms.values())).area)/unary_union(list(geoms.values())).area*100
     return {"type":"FeatureCollection","features":feats},ov
@@ -161,8 +172,4 @@ def outline_ll():
     isr_ll=transform(lambda x,y:T.transform(x,y),isr.simplify(250));om=mapping(isr_ll);om['coordinates']=rnd(om['coordinates']);return om
 
 if __name__=="__main__":
-    om=outline_ll()
-    o120,ov1=build(120);o215,ov2=build(215)
-    out={"n120":o120,"n215":o215,"outline":om}
-    json.dump(out,open('mapdata_new.json','w'),ensure_ascii=False,separators=(',',':'))
-    import os;print("bytes:",os.path.getsize('mapdata_new.json'),"overlap%:",round(ov1,4),round(ov2,4))
+    print("use build_maps.py to generate the map files")

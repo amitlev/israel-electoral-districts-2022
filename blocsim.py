@@ -5,17 +5,18 @@ from scipy.spatial import Voronoi
 from shapely.geometry import Polygon, MultiPolygon, Point
 from shapely.ops import unary_union
 from bidi.algorithm import get_display
+import sys
 import engine as E
-data=E.load()
+# usage: python blocsim.py [election]   (default: the most recent election in elections.json)
+data=E.load(sys.argv[1] if len(sys.argv)>1 else None)
+EL=data['election']
 def H(s): return get_display(s)
 P=data['parties']
 
-BLOC4={'ימין':['מחל','ט'],'מרכז-שמאל':['פה','כן','אמת','מרצ','ל'],
-       'חרדי':['שס','ג'],'ערבי':['ום','עם','ד']}
-BLOC5={'ימין':['מחל','ט'],'מרכז-שמאל':['פה','כן','אמת','מרצ'],
-       'חרדי':['שס','ג'],'ערבי':['ום','עם','ד'],'ישראל ביתנו':['ל']}
-COL={'ימין':'#1f6fb2','מרכז-שמאל':'#eb6834','חרדי':'#111111',
-     'ערבי':'#1e8449','ישראל ביתנו':'#d4a017'}
+# 4 blocs = the election's default blocs; 5 blocs = same, with ישראל ביתנו (ל) split out as a niche
+BLOC4={b['name']:list(b['parties']) for b in EL['blocs']}
+BLOC5={k:[p for p in v if p!='ל'] for k,v in BLOC4.items()}; BLOC5['ישראל ביתנו']=['ל']
+COL={b['name']:b['color'] for b in EL['blocs']}; COL['ישראל ביתנו']='#d4a017'
 
 def bloc_matrix(scheme):
     names=list(scheme); idx={p:i for i,p in enumerate(P)}
@@ -77,5 +78,5 @@ def make_map(n,scheme,fname,title):
 
 for scheme,tag,label in [(BLOC4,'4bloc','4 גושים'),(BLOC5,'5bloc','5 גושים (ליברמן נישה)')]:
     for n in [120,215]:
-        s,rep=make_map(n,scheme,f"bloc_{tag}_n{n}.png",f"{n} מחוזות · {label} · הגוש הזוכה בכל מחוז")
-        print(f"[{tag} n={n}] rep={rep:.1f}%  "+"  ".join(f"{b}:{c}" for b,c in sorted(s.items(),key=lambda x:-x[1])))
+        s,rep=make_map(n,scheme,f"bloc_{EL['id']}_{tag}_n{n}.png",f"{EL['id']} · {n} מחוזות · {label} · הגוש הזוכה בכל מחוז")
+        print(f"[{EL['id']} {tag} n={n}] rep={rep:.1f}%  "+"  ".join(f"{b}:{c}" for b,c in sorted(s.items(),key=lambda x:-x[1])))
