@@ -1,30 +1,52 @@
-import csv, numpy as np
+import csv, json, os, numpy as np
 from scipy.spatial import cKDTree, Delaunay
 from collections import deque, defaultdict
-BASE="data"
-RIGHT={'מחל','ט','שס','ג','ל','ב'}; LEFT={'פה','כן','אמת','מרצ','עם','ום','ד'}
-NAMES={'מחל':'הליכוד','פה':'יש עתיד','ט':'הציונות הדתית','כן':'המחנה הממלכתי','שס':'ש"ס','ג':'יהדות התורה','ל':'ישראל ביתנו','עם':'רע"מ','ום':'חד"ש-תע"ל','אמת':'העבודה','מרצ':'מרצ','ד':'בל"ד'}
+ROOT=os.path.dirname(os.path.abspath(__file__))
+BASE=os.path.join(ROOT,"data")
+CONF=json.load(open(os.path.join(ROOT,"elections.json"),encoding='utf-8'))
+ENVELOPES=9999   # סמל ישוב of the double-envelope ("מעטפות חיצוניות") pseudo-settlement
 
-def load():
+def election(eid=None):
+    """Config of one election from elections.json (default: the most recent one)."""
+    eid=str(eid or CONF["default"]); el=dict(CONF["elections"][eid]); el["id"]=eid; return el
+
+def names(eid=None): return {p["code"]:p["name"] for p in election(eid)["parties"]}
+NAMES=names()
+
+def load(eid=None):
+    el=election(eid)
     coords={}
     for r in csv.DictReader(open(f"{BASE}/settlement_coords.csv",encoding='cp1255')):
         try: coords[int(r['סמל ישוב'])]=(float(r['אורדינטה מזרחית']),float(r['אורדינטה צפונית']))
         except: pass
-    rows=list(csv.reader(open(f"{BASE}/ballots_2022.csv",encoding='utf-8-sig')))
-    hdr=rows[0]; ki=hdr.index('כשרים'); parties=hdr[ki+1:]
+    rows=list(csv.reader(open(os.path.join(ROOT,el["ballots"]),encoding='utf-8-sig')))
+    hdr=rows[0]; ki=hdr.index('כשרים')
+    # party columns = everything after 'כשרים' except per-election bookkeeping columns
+    skip=set(el.get("non_party_columns",[]))
+    pcols=[i for i in range(ki+1,len(hdr)) if hdr[i] not in skip]; parties=[hdr[i] for i in pcols]
     si=hdr.index('סמל ישוב'); ni=hdr.index('שם ישוב')
     X=[];W=[];V=[];CITY=[]
+    st=dict(valid=0,located=0,envelopes=0,unlocated_other=0,ballots=0,mismatch_rows=0)
     for r in rows[1:]:
         if len(r)<len(hdr): continue
-        sym=int(r[si]); w=int(r[ki])
-        if sym not in coords or w<=0: continue
-        X.append(coords[sym]);W.append(w);CITY.append(r[ni]);V.append([int(r[ki+1+i]) for i in range(len(parties))])
+        sym=int(r[si]); w=int(r[ki]); v=[int(r[i] or 0) for i in pcols]
+        st['valid']+=w
+        if sum(v)!=w: st['mismatch_rows']+=1
+        if sym not in coords or w<=0:
+            st['envelopes' if sym==ENVELOPES else 'unlocated_other']+=w; continue
+        st['located']+=w; st['ballots']+=1
+        X.append(coords[sym]);W.append(w);CITY.append(r[ni]);V.append(v)
+    if st['mismatch_rows']:
+        raise ValueError(f"{el['ballots']}: {st['mismatch_rows']} rows where party columns != כשרים "
+                         f"(a non-party column is probably missing from non_party_columns)")
     X=np.array(X,float);W=np.array(W,float);V=np.array(V,float)
     tot=V.sum(0);keep=tot/tot.sum()>=0.01
     Pk=V[:,keep];P=Pk/np.maximum(Pk.sum(1,keepdims=True),1)
+    RIGHT=set(el["lean"]["right"]); LEFT=set(el["lean"]["left"])
     ci=np.array([1.0 if p in RIGHT else(-1.0 if p in LEFT else 0)for p in parties])
     score=(V*ci).sum(1)/np.maximum(V.sum(1),1)
-    return dict(X=X,W=W,V=V,P=P,parties=parties,city=np.array(CITY),score=score)
+    st['settlements']=len(set(CITY))
+    return dict(X=X,W=W,V=V,P=P,parties=parties,city=np.array(CITY),score=score,election=el,stats=st)
 
 def rcb(idx,k,data,alpha):
     if k==1: return [idx]
@@ -111,8 +133,10 @@ def metrics(data,assign,n,cid=None,cadj=None):
     return dict(wins=wins,dev=(loads.max()-loads.min())/loads.mean()*100,ws=float(np.mean(ws)),noncontig=bad)
 
 if __name__=="__main__":
-    data=load();cid,cadj=city_adjacency(data)
-    print("located voters:",int(data['W'].sum()))
+    import sys
+    data=load(sys.argv[1] if len(sys.argv)>1 else None);cid,cadj=city_adjacency(data)
+    NAMES=names(data['election']['id'])
+    print(data['election']['title'],"| located voters:",int(data['W'].sum()),"|",data['stats'])
     for n in [12,30,60,120]:
         for alpha in [0.0,0.5,1.0]:
             a=solve(data,n,alpha=alpha)

@@ -1,0 +1,68 @@
+{
+  "default": "2026",
+  "elections": {
+    "2026": {
+      "knesset": 26,
+      "title": "הבחירות לכנסת ה-26 (אוקטובר 2026)",
+      "ballots": "data/ballots_2026.csv",
+      "source": "https://media26.bechirot.gov.il/files/expb.csv",
+      "non_party_columns": ["חיצוניות", "קלפי אחרת", ""],
+      "parties": [
+        {"code": "ודם", "name": "הרשימה המשותפת", "color": "#147a6f"},
+        {"code": "עם", "name": "רע\"ם", "color": "#7cb342"},
+        {"code": "אמת", "name": "הדמוקרטים", "color": "#e63946"},
+        {"code": "דרך", "name": "ישר!", "color": "#6a5acd"},
+        {"code": "רק", "name": "ביחד", "color": "#5bc8e8"},
+        {"code": "די", "name": "המילואימניקים והכלכלית", "color": "#6b8e23"},
+        {"code": "ל", "name": "ישראל ביתנו", "color": "#d4a017"},
+        {"code": "מחל", "name": "הליכוד", "color": "#1f6fb2"},
+        {"code": "ך", "name": "עמך ישראל", "color": "#b5651d"},
+        {"code": "ט", "name": "הציונות הדתית–זהות", "color": "#f28c28"},
+        {"code": "ב", "name": "עוצמה יהודית", "color": "#7a1f1f"},
+        {"code": "שס", "name": "ש\"ס", "color": "#111111"},
+        {"code": "ג", "name": "יהדות התורה", "color": "#8a6d3b"}
+      ],
+      "blocs": [
+        {"name": "ערבי", "color": "#1e8449", "parties": ["ודם", "עם"]},
+        {"name": "גוש השינוי", "color": "#dc2626", "parties": ["אמת", "דרך", "רק", "ל", "די"]},
+        {"name": "ימין", "color": "#1f6fb2", "parties": ["מחל", "ב", "ט", "ך"]},
+        {"name": "חרדי", "color": "#111111", "parties": ["שס", "ג"]}
+      ],
+      "lean": {
+        "right": ["מחל", "ב", "ט", "ך", "שס", "ג"],
+        "left": ["ודם", "עם", "אמת", "דרך", "רק", "ל", "די"]
+      }
+    },
+    "2022": {
+      "knesset": 25,
+      "title": "הבחירות לכנסת ה-25 (נובמבר 2022)",
+      "ballots": "data/ballots_2022.csv",
+      "source": "https://media25.bechirot.gov.il/files/expb.csv",
+      "non_party_columns": [],
+      "parties": [
+        {"code": "ום", "name": "חד\"ש-תע\"ל", "color": "#c0392b"},
+        {"code": "ד", "name": "בל\"ד", "color": "#16a085"},
+        {"code": "עם", "name": "רע\"ם", "color": "#1e8449"},
+        {"code": "מרצ", "name": "מרצ", "color": "#27ae60"},
+        {"code": "אמת", "name": "העבודה", "color": "#e74c3c"},
+        {"code": "כן", "name": "המחנה הממלכתי", "color": "#8e44ad"},
+        {"code": "פה", "name": "יש עתיד", "color": "#5bc8e8"},
+        {"code": "ל", "name": "ישראל ביתנו", "color": "#d4a017"},
+        {"code": "מחל", "name": "הליכוד", "color": "#1f6fb2"},
+        {"code": "ט", "name": "הציונות הדתית", "color": "#2b1a4a"},
+        {"code": "שס", "name": "ש\"ס", "color": "#111111"},
+        {"code": "ג", "name": "יהדות התורה", "color": "#8a6d3b"}
+      ],
+      "blocs": [
+        {"name": "ערבי", "color": "#1e8449", "parties": ["ום", "עם", "ד"]},
+        {"name": "מרכז-שמאל", "color": "#dc2626", "parties": ["פה", "כן", "אמת", "מרצ", "ל"]},
+        {"name": "ימין", "color": "#1f6fb2", "parties": ["מחל", "ט"]},
+        {"name": "חרדי", "color": "#111111", "parties": ["שס", "ג"]}
+      ],
+      "lean": {
+        "right": ["מחל", "ט", "שס", "ג", "ל", "ב"],
+        "left": ["פה", "כן", "אמת", "מרצ", "עם", "ום", "ד"]
+      }
+    }
+  }
+}
